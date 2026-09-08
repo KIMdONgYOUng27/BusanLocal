@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AppScreen, NavTab, User, CourseItem, TripCourse, EventItem, Place } from '../types';
 import { authService, getFriendlyAuthErrorMessage } from '../services/authService';
 import { tripService } from '../services/tripService';
+import { analyticsService } from '../services/analyticsService';
 import { mockCourses, mockEvents } from '../mock/mockData';
 
 interface AppContextType {
@@ -100,6 +101,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
+  useEffect(() => {
+    // 8. 화면이 실제로 바뀔 때 screen_view를 비동기로 기록
+    analyticsService.track('screen_view', {
+      screenName: currentScreen,
+    }).catch(() => {});
+  }, [currentScreen]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
   };
@@ -120,17 +128,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updated = await tripService.addPlaceToCourse(place);
     setActiveCourseItems(updated);
     showToast(`'${place.name}' 코스에 추가되었습니다`);
+    analyticsService.track('place_added_to_course', {
+      screenName: currentScreen,
+      resourceType: 'place',
+      resourceId: place.id,
+      metadata: { placeName: place.name },
+    }).catch(() => {});
   };
 
   const removeCourseItem = async (itemId: string) => {
     const updated = await tripService.removeCourseItem(itemId);
     setActiveCourseItems(updated);
     showToast('장소가 코스에서 삭제되었습니다');
+    analyticsService.track('place_removed_from_course', {
+      screenName: currentScreen,
+      resourceType: 'course_item',
+      resourceId: itemId,
+    }).catch(() => {});
   };
 
   const moveCourseItem = async (index: number, direction: 'up' | 'down') => {
     const updated = await tripService.moveCourseItem(index, direction);
     setActiveCourseItems(updated);
+    analyticsService.track('course_item_moved', {
+      screenName: currentScreen,
+      resourceType: 'course_item',
+      metadata: { index, direction },
+    }).catch(() => {});
   };
 
   const toggleBookmarkCourse = (courseId: string) => {
@@ -138,9 +162,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const exists = prev.includes(courseId);
       if (exists) {
         showToast('저장 코스에서 삭제되었습니다');
+        analyticsService.track('course_unbookmarked', {
+          screenName: currentScreen,
+          resourceType: 'course',
+          resourceId: courseId,
+        }).catch(() => {});
         return prev.filter(id => id !== courseId);
       } else {
         showToast('내 저장 코스에 추가되었습니다 ⭐');
+        analyticsService.track('course_bookmarked', {
+          screenName: currentScreen,
+          resourceType: 'course',
+          resourceId: courseId,
+        }).catch(() => {});
         return [...prev, courseId];
       }
     });
@@ -151,9 +185,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const exists = prev.includes(eventId);
       if (exists) {
         showToast('이벤트 저장이 취소되었습니다');
+        analyticsService.track('event_unbookmarked', {
+          screenName: currentScreen,
+          resourceType: 'event',
+          resourceId: eventId,
+        }).catch(() => {});
         return prev.filter(id => id !== eventId);
       } else {
         showToast('이벤트가 저장되었습니다 ⭐');
+        analyticsService.track('event_bookmarked', {
+          screenName: currentScreen,
+          resourceType: 'event',
+          resourceId: eventId,
+        }).catch(() => {});
         return [...prev, eventId];
       }
     });
@@ -177,6 +221,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         : '🎉 코스가 [코스 조립]으로 성공적으로 복제되었습니다!'
     );
     navigate('plan');
+    analyticsService.track('course_imported', {
+      screenName: currentScreen,
+      resourceType: 'course',
+      resourceId: course.id,
+      metadata: { courseTitle: course.title, replacedWithAlternative },
+    }).catch(() => {});
   };
 
   const saveNewCourse = async (title: string): Promise<boolean> => {
@@ -185,6 +235,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await loadMyCourses();
       showToast('코스가 성공적으로 저장되었습니다 🎉');
       navigate('mypage');
+      analyticsService.track('course_saved', {
+        screenName: currentScreen,
+        resourceType: 'course',
+        metadata: { title, area: selectedArea },
+      }).catch(() => {});
       return true;
     } catch (err: any) {
       let message = err?.message || '코스 저장 중 오류가 발생했습니다.';
@@ -207,6 +262,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast(`${user.name}님 환영합니다!`);
       await loadMyCourses();
       navigate('home');
+      analyticsService.track('login_succeeded', {
+        screenName: 'login',
+        resourceType: 'auth',
+        resourceId: user.id,
+      }).catch(() => {});
       return true;
     }
     return false;
