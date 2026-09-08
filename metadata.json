@@ -1,0 +1,6 @@
+{
+  "name": "LocalFlow Busan",
+  "description": "부산 로컬 여행 코스 조립 및 실시간 경험 발견 플랫폼",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
