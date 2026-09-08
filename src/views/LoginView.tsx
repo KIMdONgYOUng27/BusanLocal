@@ -4,14 +4,14 @@ import { ChevronLeft, Mail, Lock, ArrowRight } from 'lucide-react';
 
 export const LoginView: React.FC = () => {
   const { login, navigate } = useApp();
-  const [email, setEmail] = useState('sujin.busan@localflow.kr');
-  const [password, setPassword] = useState('••••••••');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    await login(email);
+    await login(email, password);
     setIsLoading(false);
   };
 

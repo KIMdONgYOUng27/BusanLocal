@@ -59,6 +59,8 @@ export interface CourseItem {
   stayDurationMinutes: number;
   highlightTag?: string;
   transitToNext?: TransitInfo;
+  isMustVisit?: boolean;
+  isLocked?: boolean;
 }
 
 export interface EventItem {

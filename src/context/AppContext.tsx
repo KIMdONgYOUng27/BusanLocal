@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AppScreen, NavTab, User, CourseItem, TripCourse, EventItem, Place } from '../types';
-import { authService } from '../services/authService';
+import { authService, getFriendlyAuthErrorMessage } from '../services/authService';
 import { tripService } from '../services/tripService';
-import { mockCourses, mockCurrentUser, mockEvents } from '../mock/mockData';
+import { mockCourses, mockEvents } from '../mock/mockData';
 
 interface AppContextType {
   currentScreen: AppScreen;
@@ -26,11 +26,11 @@ interface AppContextType {
   openForkModal: (course: TripCourse) => void;
   closeForkModal: () => void;
   confirmForkCourse: (course: TripCourse, replacedWithAlternative?: boolean) => void;
-  login: (email: string) => Promise<void>;
-  signup: (name: string, email: string) => Promise<void>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<boolean>;
+  signup: (name: string, email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   allCourses: TripCourse[];
-  saveNewCourse: (title: string) => void;
+  saveNewCourse: (title: string) => Promise<boolean>;
   selectedEventForDetail: EventItem | null;
   setSelectedEventForDetail: (event: EventItem | null) => void;
   selectedCourseForDetail: TripCourse | null;
@@ -43,7 +43,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('home');
   const [activeTab, setActiveTabState] = useState<NavTab>('home');
   const [screenParams, setScreenParams] = useState<Record<string, any>>({});
-  const [currentUser, setCurrentUser] = useState<User | null>(mockCurrentUser);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeCourseItems, setActiveCourseItems] = useState<CourseItem[]>([]);
   const [savedCourseIds, setSavedCourseIds] = useState<string[]>(['course_top1']);
   const [savedEventIds, setSavedEventIds] = useState<string[]>(['event_drone']);
@@ -54,11 +54,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedEventForDetail, setSelectedEventForDetail] = useState<EventItem | null>(mockEvents[0]);
   const [selectedCourseForDetail, setSelectedCourseForDetail] = useState<TripCourse | null>(mockCourses[0]);
 
+  const loadMyCourses = async () => {
+    try {
+      const myCourses = await tripService.getMyCourses();
+      if (myCourses && myCourses.length > 0) {
+        setAllCourses(prev => {
+          const myCourseIds = new Set(myCourses.map(c => c.id));
+          const mockFiltered = prev.filter(c => !myCourseIds.has(c.id));
+          return [...myCourses, ...mockFiltered];
+        });
+        setSavedCourseIds(prev => {
+          const combined = new Set([...prev, ...myCourses.map(c => c.id)]);
+          return Array.from(combined);
+        });
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     // Initial load
     tripService.getActiveCourseItems().then(items => {
       setActiveCourseItems(items);
     });
+
+    // Initial auth check
+    authService.getCurrentUser().then(user => {
+      if (user) {
+        setCurrentUser(user);
+        loadMyCourses();
+      }
+    });
+
+    // Listen to Supabase auth state changes
+    const subscription = authService.onAuthStateChange(user => {
+      setCurrentUser(user);
+      if (user) {
+        loadMyCourses();
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
   }, []);
 
   const showToast = (msg: string) => {
@@ -140,30 +179,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     navigate('plan');
   };
 
-  const saveNewCourse = async (title: string) => {
-    const created = await tripService.saveCurrentCourse(title, selectedArea);
-    setAllCourses(prev => [created, ...prev]);
-    setSavedCourseIds(prev => [created.id, ...prev]);
-    showToast('코스가 성공적으로 저장되었습니다 🎉');
-    navigate('mypage');
+  const saveNewCourse = async (title: string): Promise<boolean> => {
+    try {
+      await tripService.saveCurrentCourse(title, selectedArea);
+      await loadMyCourses();
+      showToast('코스가 성공적으로 저장되었습니다 🎉');
+      navigate('mypage');
+      return true;
+    } catch (err: any) {
+      let message = err?.message || '코스 저장 중 오류가 발생했습니다.';
+      if (message === '로그인이 필요합니다.') {
+        message = '로그인이 필요합니다. 먼저 로그인해주세요.';
+      }
+      showToast(message);
+      return false;
+    }
   };
 
-  const login = async (email: string) => {
-    const user = await authService.login(email);
-    setCurrentUser(user);
-    showToast(`${user.name}님 환영합니다!`);
-    navigate('home');
+  const login = async (email: string, password: string): Promise<boolean> => {
+    const { user, error } = await authService.login(email, password);
+    if (error) {
+      showToast(getFriendlyAuthErrorMessage(error));
+      return false;
+    }
+    if (user) {
+      setCurrentUser(user);
+      showToast(`${user.name}님 환영합니다!`);
+      await loadMyCourses();
+      navigate('home');
+      return true;
+    }
+    return false;
   };
 
-  const signup = async (name: string, email: string) => {
-    const user = await authService.signup(name, email);
-    setCurrentUser(user);
-    showToast(`${user.name}님 가입을 축하드립니다!`);
-    navigate('home');
+  const signup = async (name: string, email: string, password: string): Promise<boolean> => {
+    const { user, needsEmailVerification, error } = await authService.signup(name, email, password);
+    if (error) {
+      showToast(getFriendlyAuthErrorMessage(error));
+      return false;
+    }
+
+    if (needsEmailVerification) {
+      showToast('인증 이메일을 확인해주세요');
+      navigate('login');
+      return true;
+    }
+
+    if (user) {
+      setCurrentUser(user);
+      showToast(`${user.name}님 가입을 축하드립니다!`);
+      navigate('home');
+      return true;
+    }
+
+    showToast('회원가입이 완료되었습니다. 로그인해주세요.');
+    navigate('login');
+    return true;
   };
 
-  const logout = () => {
-    authService.logout();
+  const logout = async () => {
+    const { error } = await authService.logout();
+    if (error) {
+      showToast(getFriendlyAuthErrorMessage(error));
+    }
     setCurrentUser(null);
     showToast('로그아웃 되었습니다');
     navigate('login');

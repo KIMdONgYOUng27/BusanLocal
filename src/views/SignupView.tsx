@@ -12,7 +12,7 @@ export const SignupView: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    await signup(name, email);
+    await signup(name, email, password);
     setIsLoading(false);
   };
 
