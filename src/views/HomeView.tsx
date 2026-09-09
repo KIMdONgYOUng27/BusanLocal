@@ -57,7 +57,7 @@ export const HomeView: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col w-full pb-6 space-y-6 pt-2">
+    <div className="flex flex-col w-full pb-28 space-y-6 pt-2">
       {/* Top Greeting & Context Bar */}
       <section className="px-4">
         <div className="flex items-center justify-between gap-2">
@@ -67,7 +67,7 @@ export const HomeView: React.FC = () => {
               실시간 로컬 큐레이션 ON
             </span>
             <h1 className="text-[22px] font-extrabold text-[#183B4E] tracking-tight">
-              안녕하세요, {currentUser?.name || '수진'}님! 👋
+              안녕하세요, {currentUser?.name || '여행자'}님! 👋
             </h1>
             <p className="text-xs text-[#475569]">
               이번 주말 부산에서 뭐 하지?

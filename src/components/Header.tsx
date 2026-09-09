@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { MapPin, ChevronDown, Bell, Check } from 'lucide-react';
+import { UserAvatar } from './UserAvatar';
 
 export const Header: React.FC = () => {
   const { selectedArea, setSelectedArea, currentUser, navigate, showToast } = useApp();
@@ -37,7 +38,7 @@ export const Header: React.FC = () => {
           >
             <img
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6IRQS77Fp1DDKmlbTm-Dzmqpe4wS9SPWN55ESrmBM7lUOMaZVa8dmOLAa_SJIqWv3a9sH5KadO7rnGYBxZAIYafgnywTiQ6ZR35G_0s1pfOzEbNSxuCRnnpI6iBz19-zkPO0qAihOBfxu6Wb7ILg26kn4eZw11QZv7aYitIwgLMSSd6XJQA6y_VCmEEmGfQiuihisXGKCzp0kVGqIqPZVDUTwjbCV4WjjA6stW6jhrFZ7bPojRcyHWQ"
-              alt="LocalFlow Busan"
+              alt="Trip b"
               className="h-7 w-7 object-contain rounded-full bg-[#E6EEFF] p-0.5"
             />
           </button>
@@ -47,7 +48,7 @@ export const Header: React.FC = () => {
               onClick={() => navigate('home')}
               className="text-left font-bold text-[17px] text-[#183B4E] leading-tight truncate tracking-tight"
             >
-              LocalFlow Busan
+              Trip b
             </button>
 
             {/* Area Pill trigger */}
@@ -102,10 +103,10 @@ export const Header: React.FC = () => {
             className="w-11 h-11 flex items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-[#45C7F2] active:scale-95 transition-all"
             aria-label="마이페이지 프로필"
           >
-            <img
-              src={currentUser?.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBw13gQPDSpIuMEhG0s5k64vRtDKjl-AuuA8QQMf04bclN6uEl9A-fiF7sXWRo3uhmdnLKokoT4GX1jfJNGfS-yuOfhQx4XIyDMavMkR76Q8Cu1qajmj3P8n8_f4z_fM1Xz51u_n41MgnUGWt5XnFTZjTM-GqlAUlU7g3tqoHWpVUEx8hqf48w2OB9EWgfFfEOodZNwXhYorjjS0f9SETZg40M9PvnYJepgzjet92VQdqWyDeRphExgMg'}
+            <UserAvatar
+              src={currentUser?.avatar}
               alt={currentUser?.name || '프로필'}
-              className="w-8 h-8 rounded-full object-cover border border-[#E2E8F0] shadow-xs"
+              className="w-8 h-8 border border-[#E2E8F0] shadow-xs"
             />
           </button>
         </div>

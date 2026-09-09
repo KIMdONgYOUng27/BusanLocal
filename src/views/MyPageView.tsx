@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { UserAvatar } from '../components/UserAvatar';
 import { 
   Bookmark, 
   GitFork, 
@@ -18,18 +19,27 @@ export const MyPageView: React.FC = () => {
   const { 
     currentUser, 
     allCourses, 
+    myCourses,
     savedCourseIds, 
     logout, 
     navigate, 
     openForkModal,
     setSelectedCourseForDetail,
+    publishCourse,
     showToast 
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'saved' | 'created'>('saved');
 
+  // 1. '저장한 코스': saved_courses에 찜/저장한 코스만 표시
   const savedCourses = allCourses.filter(c => savedCourseIds.includes(c.id));
-  const createdCourses = allCourses.filter(c => c.author.name === (currentUser?.name || '수진'));
+
+  // 2. '내가 만든 코스': '내 코스 저장'을 통해 trips 테이블에 생성된 내 코스만 표시
+  const createdCourses = myCourses.length > 0
+    ? myCourses
+    : allCourses.filter(
+        c => currentUser && (c.author.id === currentUser.id || (c.author.id === 'me' && c.author.name === currentUser.name))
+      );
 
   const handlePreview = (course: any) => {
     setSelectedCourseForDetail(course);
@@ -42,14 +52,15 @@ export const MyPageView: React.FC = () => {
       <div className="p-4 rounded-3xl bg-[#FFFFFF] border border-[#E2E8F0] shadow-xs flex flex-col gap-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <img
-              src={currentUser?.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBw13gQPDSpIuMEhG0s5k64vRtDKjl-AuuA8QQMf04bclN6uEl9A-fiF7sXWRo3uhmdnLKokoT4GX1jfJNGfS-yuOfhQx4XIyDMavMkR76Q8Cu1qajmj3P8n8_f4z_fM1Xz51u_n41MgnUGWt5XnFTZjTM-GqlAUlU7g3tqoHWpVUEx8hqf48w2OB9EWgfFfEOodZNwXhYorjjS0f9SETZg40M9PvnYJepgzjet92VQdqWyDeRphExgMg'}
+            <UserAvatar
+              src={currentUser?.avatar}
               alt={currentUser?.name || '유저'}
-              className="w-14 h-14 rounded-full object-cover border-2 border-[#45C7F2] shadow-xs"
+              className="w-14 h-14 border-2 border-[#45C7F2] shadow-xs"
+              iconClassName="w-7 h-7 text-[#64748B]"
             />
             <div>
               <div className="flex items-center gap-1.5">
-                <h1 className="text-base font-bold text-[#183B4E]">{currentUser?.name || '수진'}</h1>
+                <h1 className="text-base font-bold text-[#183B4E]">{currentUser?.name || '부산여행자'}</h1>
                 <span className="px-2 py-0.2 rounded-full bg-[#E6EEFF] text-[#006781] text-[10px] font-bold">
                   {currentUser?.badgeText || '해변 산책러'}
                 </span>
@@ -68,7 +79,7 @@ export const MyPageView: React.FC = () => {
         </div>
 
         <p className="text-xs text-[#475569] leading-relaxed bg-[#F8FAFC] p-2.5 rounded-xl border border-[#E2E8F0]">
-          {currentUser?.bio || '주말마다 부산 구석구석 숨은 힐링 스팟을 찾아 떠나는 주말 여행자입니다 🌊'}
+          {currentUser?.bio || '부산 구석구석을 여행하는 여행자입니다 🌊'}
         </p>
 
         {/* User Activity Stats */}
@@ -78,7 +89,7 @@ export const MyPageView: React.FC = () => {
             <span className="text-[10px] text-[#64748B]">저장한 코스</span>
           </div>
           <div className="flex flex-col border-x border-[#E2E8F0]">
-            <span className="text-sm font-bold text-[#006781]">{currentUser?.forkedCount || 8}</span>
+            <span className="text-sm font-bold text-[#006781]">{currentUser?.forkedCount || 0}</span>
             <span className="text-[10px] text-[#64748B]">포크된 횟수</span>
           </div>
           <div className="flex flex-col">
@@ -163,9 +174,9 @@ export const MyPageView: React.FC = () => {
                     e.stopPropagation();
                     openForkModal(course);
                   }}
-                  className="px-3 py-1.5 rounded-full bg-[#45C7F2] text-[#183B4E] text-[11px] font-bold shrink-0"
+                  className="px-3 py-1.5 rounded-full bg-[#45C7F2] text-[#183B4E] text-[11px] font-bold shrink-0 hover:bg-[#5BD4FF] active:scale-95 transition-all"
                 >
-                  조립
+                  일정에 추가
                 </button>
               </div>
             ))
@@ -196,7 +207,17 @@ export const MyPageView: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <h3 className="text-xs font-bold text-[#183B4E] truncate">{course.title}</h3>
                   <div className="flex items-center gap-2 text-[11px] text-[#64748B] mt-1">
-                    <span className="text-[#006781] font-bold">{course.isPublic ? '커뮤니티 공개중' : '비공개'}</span>
+                    <span 
+                      onClick={e => {
+                        if (!course.isPublic) {
+                          e.stopPropagation();
+                          publishCourse(course.id);
+                        }
+                      }}
+                      className={`font-bold ${course.isPublic ? 'text-[#006781]' : 'text-[#64748B] hover:text-[#006781] underline cursor-pointer'}`}
+                    >
+                      {course.isPublic ? '커뮤니티 공개중' : '비공개 (공개하기)'}
+                    </span>
                     <span>·</span>
                     <span>{course.items.length}개 스팟</span>
                   </div>

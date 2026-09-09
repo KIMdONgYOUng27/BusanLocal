@@ -22,12 +22,11 @@ export const CourseResultView: React.FC = () => {
   const stats = analyticsService.calculateCourseStats(activeCourseItems);
 
   const handleSave = () => {
-    saveNewCourse(courseTitle);
+    saveNewCourse(courseTitle, isPublic);
   };
 
   const handleShareToCommunity = () => {
-    showToast('🎉 코스가 커뮤니티에 공개되었습니다! (다른 여행자 복사 허용)');
-    saveNewCourse(courseTitle);
+    saveNewCourse(courseTitle, true);
   };
 
   return (
@@ -148,7 +147,7 @@ export const CourseResultView: React.FC = () => {
           className="w-full h-12 rounded-full bg-[#45C7F2] text-[#183B4E] text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all hover:bg-[#5BD4FF]"
         >
           <Bookmark className="w-4 h-4" />
-          <span>내 일정에 저장하기</span>
+          <span>내 코스 저장 완료</span>
         </button>
 
         <button

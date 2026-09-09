@@ -3,8 +3,8 @@ import { User, Place, EventItem, TripCourse, CourseItem, CourseComment, DateOpti
 export const mockCurrentUser: User = {
   id: 'user_sujin',
   name: '수진',
-  email: 'sujin.busan@localflow.kr',
-  avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBw13gQPDSpIuMEhG0s5k64vRtDKjl-AuuA8QQMf04bclN6uEl9A-fiF7sXWRo3uhmdnLKokoT4GX1jfJNGfS-yuOfhQx4XIyDMavMkR76Q8Cu1qajmj3P8n8_f4z_fM1Xz51u_n41MgnUGWt5XnFTZjTM-GqlAUlU7g3tqoHWpVUEx8hqf48w2OB9EWgfFfEOodZNwXhYorjjS0f9SETZg40M9PvnYJepgzjet92VQdqWyDeRphExgMg',
+  email: 'sujin.busan@tripb.kr',
+  avatar: '',
   role: 'traveler',
   badgeText: '해변 산책러',
   isVerifiedLocal: false,
@@ -343,7 +343,7 @@ export const mockCourses: TripCourse[] = [
     author: {
       id: 'author_sujin',
       name: '수진',
-      avatar: mockCurrentUser.avatar,
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBw13gQPDSpIuMEhG0s5k64vRtDKjl-AuuA8QQMf04bclN6uEl9A-fiF7sXWRo3uhmdnLKokoT4GX1jfJNGfS-yuOfhQx4XIyDMavMkR76Q8Cu1qajmj3P8n8_f4z_fM1Xz51u_n41MgnUGWt5XnFTZjTM-GqlAUlU7g3tqoHWpVUEx8hqf48w2OB9EWgfFfEOodZNwXhYorjjS0f9SETZg40M9PvnYJepgzjet92VQdqWyDeRphExgMg',
       isVerifiedLocal: false,
     },
     tags: ['해운대 브런치', '동백섬 산책', '요트선셋투어', '광안리 와인'],

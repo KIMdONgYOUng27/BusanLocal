@@ -174,7 +174,7 @@ export const ForkRevalidationModal: React.FC = () => {
             className="flex-2 w-2/3 h-12 rounded-full bg-[#45C7F2] text-[#183B4E] text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all hover:bg-[#5BD4FF]"
           >
             <CheckCheck className="w-4 h-4 text-[#183B4E]" />
-            내 코스로 조립 완료
+            일정에 추가
           </button>
         </div>
       </div>

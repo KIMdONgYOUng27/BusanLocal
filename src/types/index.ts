@@ -88,6 +88,7 @@ export interface EventItem {
 
 export interface TripCourse {
   id: string;
+  postId?: string;
   title: string;
   subtitle?: string;
   area: string;
@@ -115,6 +116,7 @@ export interface TripCourse {
 export interface CourseComment {
   id: string;
   courseId: string;
+  userId?: string;
   author: {
     id: string;
     name: string;

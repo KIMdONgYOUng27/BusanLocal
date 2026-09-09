@@ -22,7 +22,7 @@ export const SplashView: React.FC = () => {
         </div>
         <div className="space-y-1">
           <span className="px-3 py-1 rounded-full bg-[#BAEAFF]/20 text-[#45C7F2] text-xs font-bold tracking-widest uppercase">
-            LocalFlow Busan
+            Trip b
           </span>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">
             부산의 완벽한 하루를<br />

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { UserAvatar } from '../components/UserAvatar';
 import { 
   Flame, 
   BadgeCheck, 
@@ -23,6 +24,7 @@ import { TripCourse } from '../types';
 
 export const CommunityFeedView: React.FC = () => {
   const { 
+    currentUser,
     allCourses, 
     openForkModal, 
     savedCourseIds, 
@@ -53,7 +55,9 @@ export const CommunityFeedView: React.FC = () => {
   if (activeSubTab === 'saved') {
     displayedCourses = allCourses.filter(c => savedCourseIds.includes(c.id));
   } else if (activeSubTab === 'created') {
-    displayedCourses = allCourses.filter(c => c.author.name === '수진');
+    displayedCourses = allCourses.filter(
+      c => Boolean(currentUser && (c.author.id === currentUser.id || (c.author.id === 'me' && c.author.name === currentUser.name)))
+    );
   }
 
   if (searchKeyword.trim()) {
@@ -209,10 +213,10 @@ export const CommunityFeedView: React.FC = () => {
             <div className="p-3.5 flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <img
+                  <UserAvatar
                     src={top1Course.author.avatar}
                     alt={top1Course.author.name}
-                    className="w-7 h-7 rounded-full object-cover shadow-xs border border-[#E2E8F0]"
+                    className="w-7 h-7 shadow-xs border border-[#E2E8F0]"
                   />
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-bold text-[#183B4E]">{top1Course.author.name}</span>
@@ -351,10 +355,10 @@ export const CommunityFeedView: React.FC = () => {
                 {/* Creator row & CTA */}
                 <div className="pt-1 flex items-center justify-between gap-2 border-t border-[#F1F5F9]">
                   <div className="flex items-center gap-1.5">
-                    <img
+                    <UserAvatar
                       src={course.author.avatar}
                       alt={course.author.name}
-                      className="w-6 h-6 rounded-full object-cover border border-[#E2E8F0]"
+                      className="w-6 h-6 border border-[#E2E8F0]"
                     />
                     <span className="text-[11px] text-[#64748B] truncate">{course.author.name}</span>
                   </div>

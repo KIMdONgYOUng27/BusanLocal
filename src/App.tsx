@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppProvider, useApp } from './context/AppContext';
+import { AppProvider, useApp, PROTECTED_SCREENS } from './context/AppContext';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { Toast } from './components/Toast';
@@ -20,17 +20,52 @@ import { CommunityCourseDetailView } from './views/CommunityCourseDetailView';
 import { MyPageView } from './views/MyPageView';
 
 const AppContent: React.FC = () => {
-  const { currentScreen } = useApp();
+  const { currentScreen, currentUser, isAuthLoading } = useApp();
 
-  // Full-screen auth & splash flows
-  if (currentScreen === 'splash') {
-    return <SplashView />;
+  // 앱이 처음 실행되면 Supabase 세션 확인이 끝날 때까지 SplashView 또는 로딩 화면 표시
+  if (isAuthLoading || currentScreen === 'splash') {
+    return (
+      <div className="w-full min-h-screen bg-[#E2E8F0]/30 flex justify-center items-start">
+        <div className="w-full max-w-[430px] min-h-screen bg-[#F8FAFF] relative flex flex-col shadow-2xl overflow-x-hidden border-x border-[#E2E8F0]">
+          <SplashView />
+          <Toast />
+        </div>
+      </div>
+    );
   }
+
+  // Full-screen auth flows
   if (currentScreen === 'login') {
-    return <LoginView />;
+    return (
+      <div className="w-full min-h-screen bg-[#E2E8F0]/30 flex justify-center items-start">
+        <div className="w-full max-w-[430px] min-h-screen bg-[#F8FAFF] relative flex flex-col shadow-2xl overflow-x-hidden border-x border-[#E2E8F0]">
+          <LoginView />
+          <Toast />
+        </div>
+      </div>
+    );
   }
   if (currentScreen === 'signup') {
-    return <SignupView />;
+    return (
+      <div className="w-full min-h-screen bg-[#E2E8F0]/30 flex justify-center items-start">
+        <div className="w-full max-w-[430px] min-h-screen bg-[#F8FAFF] relative flex flex-col shadow-2xl overflow-x-hidden border-x border-[#E2E8F0]">
+          <SignupView />
+          <Toast />
+        </div>
+      </div>
+    );
+  }
+
+  // 보호된 화면 이중 방어: currentUser가 없으면 보호된 화면을 렌더링하지 않고 LoginView 표시
+  if (!currentUser && PROTECTED_SCREENS.includes(currentScreen)) {
+    return (
+      <div className="w-full min-h-screen bg-[#E2E8F0]/30 flex justify-center items-start">
+        <div className="w-full max-w-[430px] min-h-screen bg-[#F8FAFF] relative flex flex-col shadow-2xl overflow-x-hidden border-x border-[#E2E8F0]">
+          <LoginView />
+          <Toast />
+        </div>
+      </div>
+    );
   }
 
   // App screens with standard shell
@@ -60,7 +95,7 @@ const AppContent: React.FC = () => {
   };
 
   const showHeader = !['course_result', 'course_detail', 'event_detail', 'community_course_detail'].includes(currentScreen);
-  const showBottomNav = currentScreen !== 'splash';
+  const showBottomNav = Boolean(currentUser && !['splash', 'login', 'signup'].includes(currentScreen));
 
   return (
     <div className="w-full min-h-screen bg-[#E2E8F0]/30 flex justify-center items-start">

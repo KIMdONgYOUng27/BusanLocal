@@ -59,7 +59,7 @@ export const PlanCourseBuilderView: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col w-full relative pb-28">
+    <div className="flex flex-col w-full relative pb-44">
       {/* Top Section: Interactive Map Canvas Area */}
       <div className="relative w-full h-[360px] overflow-hidden bg-[#DCE9FF]">
         {/* Map Backdrop */}
@@ -418,7 +418,7 @@ export const PlanCourseBuilderView: React.FC = () => {
             className="flex-1 flex items-center justify-center gap-1.5 h-12 rounded-full bg-[#F1E1C1] text-[#183B4E] text-xs font-bold active:scale-95 transition-all shadow-xs"
           >
             <PlusCircle className="w-4 h-4 text-[#183B4E]" />
-            <span>+ 장소 추가</span>
+            <span>장소 추가</span>
           </button>
 
           {/* Save/Finalize Button */}
@@ -427,7 +427,7 @@ export const PlanCourseBuilderView: React.FC = () => {
             onClick={handleSaveSchedule}
             className="flex-1 flex items-center justify-center gap-1.5 h-12 rounded-full bg-[#45C7F2] text-[#183B4E] text-xs font-bold shadow-md hover:bg-[#5BD4FF] active:scale-98 transition-all"
           >
-            <span>일정 저장</span>
+            <span>내 코스 저장</span>
             <ArrowRight className="w-4 h-4 text-[#183B4E]" />
           </button>
         </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { UserAvatar } from '../components/UserAvatar';
 import { 
   ChevronLeft, 
   Bookmark, 
@@ -83,10 +84,10 @@ export const CourseDetailView: React.FC = () => {
         {/* Author info & metrics */}
         <div className="p-3.5 rounded-2xl bg-[#FFFFFF] border border-[#E2E8F0] shadow-xs flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img
+            <UserAvatar
               src={course.author.avatar}
               alt={course.author.name}
-              className="w-10 h-10 rounded-full object-cover border border-[#E2E8F0]"
+              className="w-10 h-10 border border-[#E2E8F0]"
             />
             <div>
               <div className="flex items-center gap-1">
@@ -169,7 +170,7 @@ export const CourseDetailView: React.FC = () => {
           className="w-full h-12 rounded-full bg-[#45C7F2] text-[#183B4E] text-xs font-bold flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all hover:bg-[#5BD4FF]"
         >
           <GitFork className="w-4 h-4" />
-          <span>내 일정으로 가져오기</span>
+          <span>일정에 추가</span>
         </button>
       </div>
     </div>

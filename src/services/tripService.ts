@@ -2,7 +2,12 @@ import { supabase } from '../lib/supabase';
 import { TripCourse, CourseItem, Place } from '../types';
 import { initialActiveCourseItems } from '../mock/mockData';
 
-let inMemoryActiveItems: CourseItem[] = [...initialActiveCourseItems];
+let inMemoryActiveItems: CourseItem[] = [];
+
+function isUuid(str?: string | null): boolean {
+  if (!str) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
 
 function formatTotalDuration(items: CourseItem[]): string {
   const totalMinutes = items.reduce((acc, item) => acc + (item.stayDurationMinutes || 60), 0);
@@ -67,7 +72,7 @@ function mapTripToCourse(trip: any, user: any, items: any[]): TripCourse {
   const authorAvatar =
     user?.user_metadata?.avatar_url ||
     user?.user_metadata?.avatar ||
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuBw13gQPDSpIuMEhG0s5k64vRtDKjl-AuuA8QQMf04bclN6uEl9A-fiF7sXWRo3uhmdnLKokoT4GX1jfJNGfS-yuOfhQx4XIyDMavMkR76Q8Cu1qajmj3P8n8_f4z_fM1Xz51u_n41MgnUGWt5XnFTZjTM-GqlAUlU7g3tqoHWpVUEx8hqf48w2OB9EWgfFfEOodZNwXhYorjjS0f9SETZg40M9PvnYJepgzjet92VQdqWyDeRphExgMg';
+    '';
 
   return {
     id: trip.id,
@@ -101,6 +106,10 @@ function mapTripToCourse(trip: any, user: any, items: any[]): TripCourse {
 export const tripService = {
   async getActiveCourseItems(): Promise<CourseItem[]> {
     return [...inMemoryActiveItems];
+  },
+
+  clearActiveCourseItems(): void {
+    inMemoryActiveItems = [];
   },
 
   async addPlaceToCourse(place: Place): Promise<CourseItem[]> {
@@ -159,7 +168,12 @@ export const tripService = {
     return [...inMemoryActiveItems];
   },
 
-  async saveCurrentCourse(title: string, area: string = '부산 광안리/해운대'): Promise<TripCourse> {
+  async saveCurrentCourse(
+    title: string, 
+    area: string = '부산 광안리/해운대',
+    isPublic: boolean = false,
+    sourceImportTripId?: string | null
+  ): Promise<TripCourse> {
     // 3. 먼저 supabase.auth.getUser()로 로그인 사용자를 가져온다.
     // 로그인 사용자가 없으면 "로그인이 필요합니다" 오류를 발생시킨다.
     const {
@@ -178,9 +192,9 @@ export const tripService = {
         owner_id: user.id,
         title: title || '나만의 부산 여행 코스',
         area: area || '부산 광안리/해운대',
-        status: 'completed',
+        status: isPublic ? 'published' : 'completed',
         optimization_mode: 'ai_experience',
-        is_public: false,
+        is_public: Boolean(isPublic),
       })
       .select('id, created_at, title, area, owner_id, status, optimization_mode, is_public')
       .single();
@@ -220,10 +234,137 @@ export const tripService = {
         throw new Error(itemsError.message || '코스 세부 항목 저장에 실패했습니다.');
       }
 
+      // 가져온 코스 출처가 있는 경우 course_imports 테이블에 생성된 imported_trip_id 연결 기록
+      if (sourceImportTripId && isUuid(sourceImportTripId)) {
+        try {
+          await supabase.from('course_imports').insert({
+            source_trip_id: sourceImportTripId,
+            imported_trip_id: tripId,
+            imported_by: user.id,
+          });
+        } catch (importErr) {
+          console.warn('course_imports link error:', importErr);
+        }
+      }
+
+      // 만약 공개 코스인 경우 course_posts에도 추가
+      if (isPublic) {
+        try {
+          const firstPlaceImg = inMemoryActiveItems[0]?.place.image;
+          await supabase.from('course_posts').insert({
+            trip_id: tripId,
+            owner_id: user.id,
+            title: title || '나만의 부산 여행 코스',
+            description: `${area} 추천 코스`,
+            cover_image_url: firstPlaceImg || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
+            visibility: 'public',
+            published_at: new Date().toISOString(),
+          });
+        } catch (postErr) {
+          console.warn('course_posts insert warning:', postErr);
+        }
+      }
+
       return mapTripToCourse(tripData, user, insertedItems || itemsToInsert);
     }
 
+    if (isPublic) {
+      try {
+        await supabase.from('course_posts').insert({
+          trip_id: tripId,
+          owner_id: user.id,
+          title: title || '나만의 부산 여행 코스',
+          description: `${area} 추천 코스`,
+          cover_image_url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
+          visibility: 'public',
+          published_at: new Date().toISOString(),
+        });
+      } catch (postErr) {
+        console.warn('course_posts insert warning:', postErr);
+      }
+    }
+
     return mapTripToCourse(tripData, user, []);
+  },
+
+  /**
+   * '일정에 추가' 기능:
+   * 1. trips 및 trip_items는 이 단계에서 절대 생성하지 않음 (저장 버튼 누를 때만 생성)
+   * 2. 원본 코스를 수정하지 않고 장소/순서를 조립 작업 메모리(activeCourseItems)로 로드
+   * 3. 가져온 사실을 course_imports 테이블에 기록
+   */
+  async importCourseToBuilder(sourceTripId: string, courseSnapshot?: TripCourse | null): Promise<CourseItem[]> {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      throw new Error('로그인이 필요합니다.');
+    }
+
+    let itemsToLoad: CourseItem[] = [];
+
+    // 1. UUID이고 Supabase trip_items에 원본 데이터가 있다면 조회
+    if (isUuid(sourceTripId)) {
+      try {
+        const { data: origItems } = await supabase
+          .from('trip_items')
+          .select('*')
+          .eq('trip_id', sourceTripId)
+          .order('sort_order', { ascending: true });
+
+        if (origItems && origItems.length > 0) {
+          const dummyTrip = { area: courseSnapshot?.area || '부산' };
+          const mapped = mapTripToCourse(dummyTrip, user, origItems);
+          itemsToLoad = mapped.items;
+        }
+      } catch (fetchErr) {
+        console.warn('Failed to fetch origItems from trip_items:', fetchErr);
+      }
+    }
+
+    // 2. snapshot이 있거나 위에서 못 가져온 경우 snapshot 사용
+    if (itemsToLoad.length === 0 && courseSnapshot?.items && courseSnapshot.items.length > 0) {
+      itemsToLoad = courseSnapshot.items;
+    }
+
+    // 3. 고유한 독립 ID를 가진 아이템으로 복제 (원본 코스와 완전히 독립 관리)
+    const clonedItems: CourseItem[] = itemsToLoad.map((item, idx) => ({
+      ...item,
+      id: `ci_imported_${idx}_${Date.now()}`,
+      order: idx + 1,
+    }));
+
+    inMemoryActiveItems = [...clonedItems];
+
+    // 4. 가져온 사실을 course_imports 테이블에 기록
+    if (isUuid(sourceTripId)) {
+      try {
+        await supabase
+          .from('course_imports')
+          .insert({
+            source_trip_id: sourceTripId,
+            imported_by: user.id,
+          });
+      } catch (importLogErr) {
+        console.warn('course_imports log note:', importLogErr);
+      }
+    }
+
+    return [...inMemoryActiveItems];
+  },
+
+  async importCourse(sourceTripId: string, courseSnapshot?: TripCourse | null): Promise<TripCourse> {
+    const items = await this.importCourseToBuilder(sourceTripId, courseSnapshot);
+    const { data: { user } } = await supabase.auth.getUser();
+    const dummyTrip = {
+      id: `draft_${Date.now()}`,
+      title: courseSnapshot?.title || '가져온 코스',
+      area: courseSnapshot?.area || '부산',
+      owner_id: user?.id,
+    };
+    return mapTripToCourse(dummyTrip, user, items);
   },
 
   async getMyCourses(): Promise<TripCourse[]> {

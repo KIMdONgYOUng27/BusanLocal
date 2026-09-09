@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { UserAvatar } from '../components/UserAvatar';
 import { 
   ChevronLeft, 
   Bookmark, 
@@ -10,9 +11,11 @@ import {
   Send, 
   Share2, 
   ThumbsUp, 
-  Check 
+  Check,
+  Trash2
 } from 'lucide-react';
 import { communityService } from '../services/communityService';
+import { analyticsService } from '../services/analyticsService';
 import { CourseComment } from '../types';
 
 export const CommunityCourseDetailView: React.FC = () => {
@@ -37,23 +40,67 @@ export const CommunityCourseDetailView: React.FC = () => {
 
   useEffect(() => {
     communityService.getComments(course.id).then(setComments);
+    communityService.getLikeStatus(course.id).then(status => {
+      setIsLiked(status.isLiked);
+      setLikeCount(status.likeCount);
+    });
   }, [course.id]);
 
-  const handleToggleLike = () => {
+  const handleToggleLike = async () => {
     const next = !isLiked;
-    setIsLiked(next);
-    setLikeCount(prev => (next ? prev + 1 : prev - 1));
-    showToast(next ? '좋아요를 눌렀습니다 ❤️' : '좋아요가 취소되었습니다');
+    try {
+      const res = await communityService.toggleLikeCourse(course.id, next);
+      setIsLiked(res.isLiked);
+      setLikeCount(res.likeCount);
+      showToast(res.isLiked ? '좋아요를 눌렀습니다 ❤️' : '좋아요가 취소되었습니다');
+      
+      const eventName = res.isLiked ? 'course_liked' : 'course_unliked';
+      analyticsService.track(eventName, {
+        screenName: 'community_course_detail',
+        resourceType: 'course',
+        resourceId: course.postId || course.id,
+      }).catch(() => {});
+    } catch (err: any) {
+      showToast(err?.message || '좋아요 처리에 실패했습니다.');
+    }
   };
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCommentText.trim()) return;
+    const trimmed = newCommentText.trim();
+    if (!trimmed) {
+      showToast('댓글 내용을 입력해주세요.');
+      return;
+    }
+    if (trimmed.length > 1000) {
+      showToast('댓글은 1000자 이하로 작성해주세요.');
+      return;
+    }
 
-    const created = await communityService.addComment(course.id, newCommentText);
-    setComments(prev => [created, ...prev]);
-    setNewCommentText('');
-    showToast('댓글이 등록되었습니다 💬');
+    try {
+      const created = await communityService.addComment(course.id, trimmed);
+      setComments(prev => [...prev, created]);
+      setNewCommentText('');
+      showToast('댓글이 등록되었습니다 💬');
+      
+      analyticsService.track('comment_created', {
+        screenName: 'community_course_detail',
+        resourceType: 'course',
+        resourceId: course.postId || course.id,
+      }).catch(() => {});
+    } catch (err: any) {
+      showToast(err?.message || '댓글 등록에 실패했습니다.');
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      await communityService.deleteComment(commentId);
+      setComments(prev => prev.filter(c => c.id !== commentId));
+      showToast('댓글이 삭제되었습니다');
+    } catch (err: any) {
+      showToast(err?.message || '댓글 삭제에 실패했습니다.');
+    }
   };
 
   return (
@@ -94,10 +141,10 @@ export const CommunityCourseDetailView: React.FC = () => {
 
             <div className="flex items-center justify-between pt-2 border-t border-[#F1F5F9]">
               <div className="flex items-center gap-2">
-                <img
+                <UserAvatar
                   src={course.author.avatar}
                   alt={course.author.name}
-                  className="w-7 h-7 rounded-full object-cover"
+                  className="w-7 h-7"
                 />
                 <span className="text-xs font-bold text-[#183B4E]">{course.author.name}</span>
               </div>
@@ -175,14 +222,26 @@ export const CommunityCourseDetailView: React.FC = () => {
               <div key={c.id} className="p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-1">
                 <div className="flex items-center justify-between text-[11px]">
                   <div className="flex items-center gap-1.5">
-                    <img
+                    <UserAvatar
                       src={c.author.avatar}
                       alt={c.author.name}
-                      className="w-5 h-5 rounded-full object-cover"
+                      className="w-5 h-5"
                     />
                     <span className="font-bold text-[#183B4E]">{c.author.name}</span>
                   </div>
-                  <span className="text-[#94A3B8]">{c.createdAt}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[#94A3B8]">{c.createdAt}</span>
+                    {currentUser && (c.userId === currentUser.id || c.author.id === currentUser.id) && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteComment(c.id)}
+                        className="text-[#94A3B8] hover:text-[#F24D4D] p-0.5"
+                        title="댓글 삭제"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="text-xs text-[#475569] pl-6.5">{c.content}</p>
               </div>
@@ -198,7 +257,7 @@ export const CommunityCourseDetailView: React.FC = () => {
           className="w-full h-12 rounded-full bg-[#45C7F2] text-[#183B4E] text-xs font-bold flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all hover:bg-[#5BD4FF]"
         >
           <GitFork className="w-4 h-4" />
-          <span>내 일정으로 가져오기</span>
+          <span>일정에 추가</span>
         </button>
       </div>
     </div>

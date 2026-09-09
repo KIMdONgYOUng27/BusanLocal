@@ -3,17 +3,59 @@ import { useApp } from '../context/AppContext';
 import { ChevronLeft, User as UserIcon, Mail, Lock, ArrowRight } from 'lucide-react';
 
 export const SignupView: React.FC = () => {
-  const { signup, navigate } = useApp();
+  const { signup, navigate, showToast } = useApp();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
+    if (isLoading) return;
+
+    const cleanName = name.trim();
+    const cleanEmail = email.trim();
+
+    // 12. 입력 검증
+    if (!cleanName) {
+      const msg = '이름(닉네임)을 입력해주세요.';
+      setErrorMessage(msg);
+      showToast(msg);
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      const msg = '올바른 이메일 형식을 입력해주세요.';
+      setErrorMessage(msg);
+      showToast(msg);
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      const msg = '비밀번호는 최소 6자 이상이어야 합니다.';
+      setErrorMessage(msg);
+      showToast(msg);
+      return;
+    }
+
     setIsLoading(true);
-    await signup(name, email, password);
-    setIsLoading(false);
+    try {
+      const result = await signup(cleanName, cleanEmail, password);
+      if (!result.success && result.message) {
+        setErrorMessage(result.message);
+      }
+    } catch (err: any) {
+      console.error('Signup error in SignupView:', err);
+      const msg = err?.message || '회원가입 처리 중 오류가 발생했습니다.';
+      setErrorMessage(msg);
+      showToast(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -41,7 +83,10 @@ export const SignupView: React.FC = () => {
                 type="text"
                 required
                 value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={e => {
+                  setName(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
                 placeholder="예: 부산갈매기"
                 className="w-full h-12 pl-10 pr-4 rounded-xl bg-[#F8FAFC] text-xs text-[#183B4E] border border-[#E2E8F0] focus:outline-none focus:border-[#45C7F2]"
               />
@@ -56,7 +101,10 @@ export const SignupView: React.FC = () => {
                 type="email"
                 required
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => {
+                  setEmail(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
                 placeholder="email@example.com"
                 className="w-full h-12 pl-10 pr-4 rounded-xl bg-[#F8FAFC] text-xs text-[#183B4E] border border-[#E2E8F0] focus:outline-none focus:border-[#45C7F2]"
               />
@@ -71,20 +119,30 @@ export const SignupView: React.FC = () => {
                 type="password"
                 required
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={e => {
+                  setPassword(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
                 placeholder="6자리 이상 입력"
                 className="w-full h-12 pl-10 pr-4 rounded-xl bg-[#F8FAFC] text-xs text-[#183B4E] border border-[#E2E8F0] focus:outline-none focus:border-[#45C7F2]"
               />
             </div>
           </div>
 
+          {/* Error Message Alert Box */}
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-[#FFF1F2] border border-[#FECDD3] text-[#E11D48] text-xs font-medium leading-relaxed animate-in fade-in duration-150">
+              {errorMessage}
+            </div>
+          )}
+
           <div className="pt-2">
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 rounded-full bg-[#45C7F2] text-[#183B4E] font-bold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all hover:bg-[#5BD4FF]"
+              className="w-full h-12 rounded-full bg-[#45C7F2] text-[#183B4E] font-bold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all hover:bg-[#5BD4FF] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <span>{isLoading ? '가입 진행 중...' : '회원가입 완료'}</span>
+              <span>{isLoading ? '가입 진행 중...' : '회원가입'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
